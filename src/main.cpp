@@ -1,280 +1,285 @@
-// #include <Arduino.h>
-// #include <PS4BT.h>
-// #include "MyCan.h"
-// USB Usb;
-// BTD Btd(&Usb);
-// PS4BT PS4(&Btd, PAIR);
-
-// // 移動             Lスティック
-// // 旋回　           ZL、ZR
-// // 低速旋回　       Rスティック
-// // 射角変更　       Rスティック
-// // 移動速度アップ　 PS4.getButtonClick(L3)
-// // ハンド上下
-// // ハンド前後
-// // ハンド開閉
-// // 発射モーターオン PS4.getButtonClick(R3)
-// // 発射            PS4.getButtonPress(R1)
-// // 単発発射
-// // 回収           PS4.getButtonClick(LEFT)
-// // 弾倉付け替え
-
-// int v1 = 0;
-// int v2 = 0;
-// int v3 = 0;
-// int v4 = 0;
-
-// int fire = 0;
-// int count = 0;
-
-// int times = 50;
-
-// int old = 1;
-// int old1 = 1;
-// int now = 0; // 前方リミットスイッチの現在の値
-// int now1 = 1;
-
-// unsigned long oldtime = 0;
-
-// double turn = 0;
-
-// int Moter = 1;
-// int power = 0;
-
-// int shoot = 0;
-
-// int kaisyu = 0;
-
-// int rad = 0;
-
-// int LS = 22;
-// int LS1 = 24;
-
-// bool printAngle, printTouch;
-// uint8_t oldL2Value, oldR2Value;
-
-// void PWM_transmit_via_CAN(int16_t pwm1, int16_t pwm2, int16_t pwm3, int16_t pwm4, uint8_t can_id)
-// { // CAN通信
-//   int16_t pwms[4] = {pwm1, pwm2, pwm3, pwm4};
-//   uint8_t pwm_highbyte[4], pwm_lowbyte[4], can_data[8], calc_checksum;
-//   static const uint8_t can_frame_prefix = 0xff,
-//                        can_frame_verID = 0xfe;
-//   for (uint8_t i = 0; i < 4; i++)
-//   {
-//     if (abs(pwms[i]) > 30000)
-//       pwms[i] = (pwms[i] > 0) ? 30000 : -30000;
-//     pwm_highbyte[i] = uint8_t(int16_t(pwms[i] >> 8) & 0xff);
-//     pwm_lowbyte[i] = uint8_t(pwms[i] & 0xff);
-//     can_data[i * 2] = pwm_lowbyte[i];
-//     can_data[(i * 2) + 1] = pwm_highbyte[i];
-//   }
-//   calc_checksum = 255 - (uint16_t(can_id + can_data[0] + can_data[1] + can_data[2] + can_data[3] + can_data[4] + can_data[5] + can_data[6] + can_data[7]) % 256);
-
-//   Serial1.write(can_frame_prefix);
-//   Serial1.write(can_frame_verID);
-//   Serial1.write(can_id);
-//   Serial1.write(can_data[0]);
-//   Serial1.write(can_data[1]);
-//   Serial1.write(can_data[2]);
-//   Serial1.write(can_data[3]);
-//   Serial1.write(can_data[4]);
-//   Serial1.write(can_data[5]);
-//   Serial1.write(can_data[6]);
-//   Serial1.write(can_data[7]);
-//   Serial1.write(calc_checksum);
-// }
-
-// void setup()
-// {
-//   Serial.begin(115200);
-//   Serial1.begin(115200);
-
-// #if !defined(__MIPSEL__) //_MIPSEL_定義済み
-//   while (!Serial)
-//     ; // LeonardoやTeensyなど、USB CDCシリアル接続を内蔵したボードで使用される。
-// #endif
-//   if (Usb.Init() == -1)
-//   {
-//     Serial.print(F("\r\nOSC did not start"));
-//     while (1)
-//       ; // 停止
-//   }
-//   Serial.print(F("\r\nPS4 Bluetooth Library Started"));
-//   pinMode(LS, INPUT_PULLUP);
-//   pinMode(LS1, INPUT_PULLUP);
-// }
-
-// void loop()
-// {
-//   // 左スティックのX,Y数値をhypotにかけた値の変数
-//   float hypot_S = 0;
-//   // 左スティックのX数値[-128~127]
-//   double RHY = (128 - PS4.getAnalogHat(RightHatY));
-//   // 左スティックのY数値[-128~127]
-//   double RHX = (PS4.getAnalogHat(RightHatX) - 128);
-
-//   double LHX = (PS4.getAnalogHat(LeftHatX) - 128);
-
-//   double LHY = (128 - PS4.getAnalogHat(LeftHatY));
-
-//   double ZRL = ((PS4.getAnalogButton(R2)) - (PS4.getAnalogButton(L2))) / 4;
-
-//   Usb.Task();
-
-//   if (PS4.connected())
-//   {
-
-//     // 移動速度の管理
-//     if (PS4.getButtonClick(L3))
-//     {
-//       if (times == 50)
-//       {
-//         times = 150;
-//       }
-//       else
-//       {
-//         times = 50;
-//       }
-//     }
-
-//     if (PS4.getAnalogHat(LeftHatX) > 137 || PS4.getAnalogHat(LeftHatX) < 117)
-//     {
-//       turn = LHX;
-//     }
-//     else if (ZRL < -15 || ZRL > 15)
-//     {
-//       turn = ZRL;
-//     }
-//     else
-//     {
-//       turn = 0;
-//     }
-
-//     // 移動
-//     if (PS4.getAnalogHat(RightHatX) > 137 || PS4.getAnalogHat(RightHatX) < 117 || PS4.getAnalogHat(RightHatY) > 137 || PS4.getAnalogHat(RightHatY) < 117 || turn > 15 || turn < -15)
-//     {
-//       v1 = RHX * -sin(PI / 4) + RHY * cos(PI / 4) - turn;
-//       v2 = RHX * -sin(PI / 4) - RHY * cos(PI / 4) - turn;
-//       v3 = RHX * sin(PI / 4) - RHY * cos(PI / 4) - turn;
-//       v4 = RHX * sin(PI / 4) + RHY * cos(PI / 4) - turn;
-//     }
-//     else
-//     {
-//       v1 = 0;
-//       v2 = 0;
-//       v3 = 0;
-//       v4 = 0;
-//     }
-//     PWM_transmit_via_CAN(v1 * times, v2 * times, v3 * times, v4 * times, 2);
-
-//     // 射角変更
-//     if (PS4.getAnalogHat(LeftHatY) > 137 || PS4.getAnalogHat(LeftHatY) < 117)
-//     {
-//       rad = LHY * 150;
-//     }
-//     else
-//     {
-//       rad = 0;
-//     }
-
-//     // 回収機構のオンオフ
-//     if (PS4.getButtonClick(LEFT))
-//     {
-//       if (kaisyu == 0)
-//       {
-//         kaisyu = -13000;
-//       }
-//       else
-//       {
-//         kaisyu = 0;
-//       }
-//     }
-
-//     // 発射用モーターのオンオフ
-//     if (PS4.getButtonClick(R3))
-//     {
-//       if (shoot == 0)
-//       {
-//         shoot = 1;
-//       }
-//       else
-//       {
-//         shoot = 0;
-//       }
-//     }
-//     switch (shoot)
-//     {
-//     case 1:
-//       if (oldtime + 100 < millis() && power < 11000)
-//       {
-//         power = power + 500;
-//         Serial.println(power);
-//         oldtime = millis();
-//       }
-//       break;
-
-//     case 0:
-//       power = 0;
-//       oldtime = 0;
-//       break;
-
-//     default:
-//       shoot = 0;
-//     }
-
-//     // 出力の確認用コード、普段は不使用
-//     //    if (PS4.getButtonClick(LEFT)) {
-//     //      power = power + 500;
-//     //      Serial.println(power);
-//     //    }
-//     //  } else {
-//     //    power = 0;
-//     //  }
-
-//     // ディスクの押し出し
-//     if (PS4.getButtonPress(R1))
-//     {
-//       if (now == 0)
-//       {
-//         Moter = -1500;
-//         Serial.println("back");
-//       }
-//       if (now1 == 0)
-//       {
-//         Moter = 6000;
-//       }
-//       now = digitalRead(LS);
-//       now1 = digitalRead(LS1);
-//     }
-//     else
-//     {
-//       Moter = 0;
-//       now = 0;
-//     }
-
-//     PWM_transmit_via_CAN(power, kaisyu, Moter, rad, 4);
-//   }
-// }
 #include <iostream>
 #include <Arduino.h>
-#include "Motor.h"
-#include "MyCan.h"
-#include "MotorDriver.h"
-mycan::MyCan can(4, 5);
-motordriver::MotorDriver md[3]={motordriver::MotorDriver(1),motordriver::MotorDriver(2),motordriver::MotorDriver(3)};
-motorbase::Motor<4> mb;
-// motorbase::Motor *mbb = {{{motorid::MotorId(0)}, {motorid::MotorId(1)}, {motorid::MotorId(2)}, {motorid::MotorId(3)}}};
+#include <array>
+#include "hard/LimitSw.h"
+#include "hard/Motor.h"
+#include "hard/MotorDriver.h"
+#include "hard/MyCanInit.h"
+#include "hard/MyCanRecive.h"
+#include "hard/MyCanSend.h"
+#include "hard/Servo.h"
+#include "system/LackSw.h"
+#include "system/mecunum.h"
+#include "system/MyPS4.h"
+#include "system/MyTimer.h"
+#include "system/NormalRotation.h"
+#include "system/SafePwm.h"
+#include "system/ShootAngle.h"
+#include "system/ButtonControll.h"
+#include "system/shootTimeChart.h"
+static constexpr uint8_t sensorBoardId1 = 7;
+static constexpr uint8_t sensorBoardId2 = 9;
+mycansend::MyCanSend canS;
+mycanrecive::MyCanRecive canR; // port指定はしっかりと
+mytimer::MyTimer tm;
+
+motordriver::MotorDriver md[3] = {motordriver::MotorDriver(1), motordriver::MotorDriver(2), motordriver::MotorDriver(3)};
+// 足回り
+mymotor::MyMotor<4> mecunumMotor;
+mecunum::Mecunum mecu(mecunumMotor);
+// 発射
+mymotor::MyMotor<1> shootRollerMotor;
+normalrotation::NormalRotation shootR(shootRollerMotor);
+
+mymotor::MyMotor<1> shootAngleMotor;
+// shootangle::ShootAngle shootA(shootAngleMotor);
+lacksw::LackSw shootA(shootAngleMotor);
+
+mymotor::MyMotor<1> diskPushMotor;
+lacksw::LackSw diskP(diskPushMotor);
+// リロード
+myservo::MyServo lockControllServo;
+
+myservo::MyServo doorControllServo;
+
+mymotor::MyMotor<1> diskTowerPushMotor;
+lacksw::LackSw diskT(diskTowerPushMotor);
+
+shoottimechart::ShootTimeChart sc(diskT, doorControllServo, lockControllServo);
+// 回収
+mymotor::MyMotor<1> rollerRotation;
+lacksw::LackSw rollerR(rollerRotation);
+
+myservo::MyServo pushU;
+// 旗アーム
+mymotor::MyMotor<1> upDownMotor;
+lacksw::LackSw upD(upDownMotor);
+
+mymotor::MyMotor<1> frontBackMotor;
+lacksw::LackSw frontB(frontBackMotor);
+
+mymotor::MyMotor<1> handControllMotor;
+lacksw::LackSw handC(handControllMotor);
+
+// ps4
+myps4::MyPS4 ps;
+
+// Clickモード
+buttoncontroll::ButtonControll bc(ps);
+
+// Limitsw
+limitsw::LimitSw<5> LimitSw1;
+limitsw::LimitSw<5> LimitSw2;
 void setup()
 {
   Serial.begin(115200);
+  ps.init();
+  canS.init(4, 5);
+  pinMode(15, INPUT_PULLUP);
+  pinMode(16, INPUT_PULLUP);
+  // canR.init(4, 5);
 }
 void loop()
 {
-  for (int i = 0; i < 4; i++)
+  ps.DataRead();
+  canR.DataRead(sensorBoardId1);
+  LimitSw1.setSwData(canR.getData(sensorBoardId1, 5));
+  canR.DataRead(sensorBoardId2); // データ取得の確認
+  LimitSw2.setSwData(canR.getData(sensorBoardId2, 5));
+
+  bool LimitSw3[2] = {digitalRead(15), digitalRead(16)};
+
+  // ashimawari
+  if (ps.getButton(myps4::R1))
   {
-    // Serial.println(mbb[i].getId());
-    // mbb[i].setPwm(); // なぞ
-    md[0].setMotorparameter(mb);
-    // std::cout << mbb[i].getId() << std::endl;
+    mecu.upPwm(80); // ここで倍率を上げる
   }
+  else
+  {
+    mecu.upPwm(40); // 基本４０倍
+  }
+  mecu.setVector(ps.getCoordinate(myps4::RStickX), ps.getCoordinate(myps4::RStickY));
+  if (ps.getCoordinate(myps4::LStickX))
+  {
+    mecu.selectRotation(ps.getCoordinate(myps4::LStickX));
+  }
+  md[1].setMotorparameter<4>(mecunumMotor.getPwms());
+
+  // shoot
+
+  shootR.setRotationPwm(ps.getButton(myps4::Circle));
+  shootA.selectOwmMovePwm(ps.getButton(myps4::Up), ps.getButton(myps4::Down), 20000, 0, LimitSw1.getSwData(2));
+  uint8_t TriangleClick = bc.Click(myps4::Triangle, 1);
+  static uint8_t oldTriangleClick = TriangleClick;
+  static uint8_t TriangleState = 0;
+  if (oldTriangleClick != TriangleClick || TriangleState)
+  {
+    if (TriangleState == 1)
+    {
+      diskP.selectOwmMovePwm(TriangleState, 4000, 1300, LimitSw1.getSwData(1), LimitSw1.getSwData(0));
+      TriangleState = LimitSw1.getSwData(1) ? 2 : TriangleState;
+    }
+    else if (TriangleState == 2)
+    {
+      diskP.selectOwmMovePwm(TriangleState, 4000, 1300, LimitSw1.getSwData(1), LimitSw1.getSwData(0));
+      TriangleState = LimitSw1.getSwData(0) ? 0 : TriangleState;
+    }
+    else
+    {
+      TriangleState = 1;
+    }
+  }
+  else
+  {
+    TriangleState = 0;
+    diskP.stop(0);
+  }
+  oldTriangleClick = TriangleClick;
+
+  // reload
+  uint8_t L1Click = bc.Click(myps4::L1, 1);
+  static uint8_t oldL1Click = L1Click;
+  if (oldL1Click != L1Click && sc.nowState() == shoottimechart::stay)
+  {
+    sc.DoorOpen();
+  }
+  else if (oldL1Click != L1Click && sc.nowState() == shoottimechart::diskLockOpen)
+  {
+    sc.Stay();
+  }
+  sc.task(LimitSw1.getSwData(3), LimitSw1.getSwData(4));
+  oldL1Click = L1Click;
+
+  std::array<int16_t, 4> packedpwm1 = {shootR.getRotationPwm(), shootA.getMovePwm(), diskP.getMovePwm(), diskT.getMovePwm()};
+  // std::array<int16_t, 4> packedpwm1 = {shootR.getRotationPwm(), shootA.getMovePwm(), diskT.getMovePwm(), diskT.getMovePwm()};
+  md[2].setMotorparameter<4>(packedpwm1);
+  std::array<uint8_t, 8> servoData = {0, 0, 0, 0, 0, lockControllServo.getRatio(), 0, doorControllServo.getRatio()};
+  // std::array<int16_t, 4> servoData = {0, 220, 255, 0};
+  // Serial.println(lockControllServo.getRatio());
+
+  // collect
+  rollerR.selectMovePwm(ps.getButton(myps4::L2B), LimitSw3[1], 0); // 回転方向の確認
+
+  if (ps.getButton(myps4::R2B) && LimitSw3[1])
+  {
+    pushU.setRatio(0);
+  }
+  else
+  {
+    pushU.setRatio(64); // 45度
+  }
+
+  // // flag
+  upD.selectOwmMovePwm(ps.getButton(myps4::Left), ps.getButton(myps4::Right), 6000, LimitSw2.getSwData(1), LimitSw2.getSwData(0)); // 回転方向の確認
+
+  uint8_t CrossClick = bc.Click(myps4::Cross, 2);
+  static bool upLimit = 0;
+  static bool downLimit = 0;
+  static bool limitCheck = 0;
+  static bool setupCheck = 0;
+  static uint8_t limitCounter = 0;
+
+  if (!setupCheck && LimitSw2.getSwData(2))
+  {
+    frontB.resetWaitPwm(-8000);
+    setupCheck = limitCounter == 2 ? 1 : 0;
+    if (!limitCheck)
+    {
+      limitCounter++;
+      limitCheck = 1;
+    }
+  }
+  else if (!setupCheck)
+  {
+    frontB.resetWaitPwm(-8000);
+    limitCheck = 0;
+  }
+  else if (LimitSw2.getSwData(2))
+  {
+    frontB.resetWaitPwm(0);
+    if ((CrossClick == 1 || !CrossClick) && limitCounter == 2)
+    {
+      upLimit = 1;
+      downLimit = 0;
+    }
+    else if (CrossClick == 1 && !limitCheck)
+    {
+      upLimit = 0;
+      downLimit = 0;
+      limitCounter++;
+      limitCounter = limitCounter > 2 ? 2 : limitCounter;
+      limitCheck = 1;
+    }
+    else if ((CrossClick == 2 || !CrossClick) && limitCounter == 1)
+    {
+      upLimit = 0;
+      downLimit = 1;
+    }
+    else if (CrossClick == 2 && !limitCheck)
+    {
+      upLimit = 0;
+      downLimit = 0;
+      limitCounter--;
+      limitCheck = 1;
+    }
+  }
+  else
+  {
+    upLimit = 0;
+    downLimit = 0;
+    limitCheck = 0;
+    frontB.resetWaitPwm(0);
+  }
+  frontB.selectOwmMovePwm(CrossClick, -8000, upLimit, downLimit); // 回転方向の確認
+  // Serial.println(limitCounter);
+
+  // frontB.selectMovePwm(CrossClick, LimitSw2.getSwData(2), LimitSw2.getSwData(3)); // 回転方向の確認
+
+  uint8_t SquareClick = bc.Click(myps4::Square, 2);
+  handC.selectOwmMovePwm(SquareClick, -6000, LimitSw2.getSwData(3), LimitSw2.getSwData(4)); // 回転方向の確認
+
+  std::array<int16_t, 4> packedpwm2 = {upD.getMovePwm(), frontB.getMovePwm(), handC.getMovePwm(), rollerR.getMovePwm()};
+  md[0].setMotorparameter<4>(packedpwm2);
+
+  if (tm.elapsedClock(180))
+  {
+    // canS.DataSend<4>(md[0].getPwms(), md[0].getCanId());
+    // canS.DataSend<4>(md[1].getPwms(), md[1].getCanId());
+    canS.DataSend<4>(md[2].getPwms(), md[2].getCanId());
+    canS.DataSend<8>(servoData, 144);
+  }
+  // canS.DataSend<4>(servodatta, md[1].getCanId());
+
+  // std::array<int16_t, 4>
+  //     aa = md[0].getPwms();
+  // for (int i = 0; i < 4; i++)
+  // {
+  //   Serial.print(aa[i]);
+  //   Serial.print("\t");
+  // }
+  // Serial.print("\n");
+  // std::array<bool, 5>
+  //     aa = LimitSw1.getSwDatas();
+  // // aa = {1, 0, 0, 1, 0};
+  // for (int i = 0; i < 5; i++)
+  // {
+  //   Serial.print(aa[i]);
+  //   Serial.print("\t");
+  // }
+  // Serial.print(canR.getData(sensorBoardId1, 5), BIN);
+  // Serial.print("\n");
+  // int8_t x = ps.getCoordinate(myps4::LStickX);
+  // int8_t y = ps.getCoordinate(myps4::LStickY);
+  // Serial.print(x);
+  // Serial.print("\t");
+  // Serial.print(y);
+  // Serial.print("\t");
+  // int8_t x_ = std::abs(x) > 30 ? 0 : x;
+  // int8_t y_ = std::abs(y) > 30 ? 0 : y;
+  // Serial.print(x_);
+  // Serial.print("\t");
+  // Serial.print(y_);
+  // Serial.print("\t");
+  // Serial.print("\n");
+  // Serial.println("a");
 }
