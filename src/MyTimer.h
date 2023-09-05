@@ -18,7 +18,7 @@ namespace mytimer
         // デストラクタ.
         ~MyTimer() {}
 
-        bool elapsedClock(double time)
+        bool elapsedClock(double time, bool micro = 0)
         {
             if (checkReset_ || oldTime_ != time)
             {
@@ -28,10 +28,19 @@ namespace mytimer
             }
             oldTime_ = time;
             end_ = std::chrono::system_clock::now();
-            if (std::chrono::duration_cast<std::chrono::milliseconds>(end_ - start_).count() > time)
+            if (!micro)
             {
-                checkReset_ = 1;
-                return 1;
+                if (std::chrono::duration_cast<std::chrono::milliseconds>(end_ - start_).count() > time)
+                {
+                    checkReset_ = 1;
+                    return 1;
+                }
+            }else{
+                if (std::chrono::duration_cast<std::chrono::microseconds>(end_ - start_).count() > time)
+                {
+                    checkReset_ = 1;
+                    return 1;
+                }
             }
             return 0;
         }
