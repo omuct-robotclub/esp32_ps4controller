@@ -13,7 +13,7 @@ static constexpr int8_t canReciveId = 9;
 
 myps4::MyPS4 ps;
 mytimer::MyTimer canTimer;
-mytimer::MyTimer rumbleTimer;
+mytimer::MyTimer collectRogerTimer;
 
 void CanSend(Command &cmd)
 {
@@ -66,64 +66,131 @@ void loop()
   CanSend(cmd);
 
   int8_t donState = 0;
-  if (ps.getButton(myps4::Triangle) && ps.getButton(myps4::R2))
+  int16_t rogerState = 0;
+  static int16_t collectAngleState = 0;
+  static int8_t upSendState = 0;
+  static int8_t downSendState = 0;
+
+  if (ps.getButton(myps4::Triangle) && ps.getButton(myps4::R2) || upSendState)
   {
     donState = -1;
     cmd = Command{.tag = Command::Tag::SET_DONFAN_CMD, .set_donfan_cmd = Command::SetDonfanCmd{donState}};
     CanSend(cmd);
+    rogerState = 7000;
+    cmd = Command{.tag = Command::Tag::SET_EXPANDER_CMD, .set_expander_cmd = Command::SetExpanderCmd{rogerState}};
+    CanSend(cmd);
+    collectAngleState = 0;
+    cmd = Command{.tag = Command::Tag::SET_ARM_ANGLE, .set_arm_angle = Command::SetArmAngle{collectAngleState}};
+    CanSend(cmd);
+    upSendState++;
+    if (upSendState > 10)
+    {
+      upSendState = 0;
+    }
   }
-  else if (ps.getButton(myps4::Triangle))
+  else if (ps.getButton(myps4::Triangle) || downSendState)
   {
     donState = 1;
     cmd = Command{.tag = Command::Tag::SET_DONFAN_CMD, .set_donfan_cmd = Command::SetDonfanCmd{donState}};
     CanSend(cmd);
-  }
-
-  // ロジャー
-  int16_t rogerState = 0;
-
-  if (ps.getButton(myps4::Triangle) && ps.getButton(myps4::R2))
-  {
-    rogerState = 7000;
-    cmd = Command{.tag = Command::Tag::SET_EXPANDER_CMD, .set_expander_cmd = Command::SetExpanderCmd{rogerState}};
-    CanSend(cmd);
-  }
-  else if (ps.getButton(myps4::Triangle))
-  {
     rogerState = -7000;
     cmd = Command{.tag = Command::Tag::SET_EXPANDER_CMD, .set_expander_cmd = Command::SetExpanderCmd{rogerState}};
     CanSend(cmd);
+    collectAngleState = 1000 * M_PI / 2;
+    cmd = Command{.tag = Command::Tag::SET_ARM_ANGLE, .set_arm_angle = Command::SetArmAngle{collectAngleState}};
+    CanSend(cmd);
+    downSendState++;
+    if (downSendState > 10)
+    {
+      downSendState = 0;
+    }
   }
+
+  static bool upState = 0;
+  static bool upButtonState = 0;
+  static int8_t upSendState = 0;
+  static bool downState = 0;
+  static bool downButtonState = 0;
+  static int8_t downSendState = 0;
+  if ((ps.getButton(myps4::Triangle) && ps.getButton(myps4::R2)) > downButtonState || downSendState)
+  {
+    if (!downSendState)
+    {
+      donState = -1;
+      rogerState = -7000;
+      collectAngleState = 0;
+      downSendState++;
+    }
+    else if (downSendState > 10)
+    {
+      downSendState = 0;
+    }
+    else
+    {
+      downSendState++;
+    }
+    cmd = Command{.tag = Command::Tag::SET_DONFAN_CMD, .set_donfan_cmd = Command::SetDonfanCmd{donState}};
+    CanSend(cmd);
+    cmd = Command{.tag = Command::Tag::SET_EXPANDER_CMD, .set_expander_cmd = Command::SetExpanderCmd{rogerState}};
+    CanSend(cmd);
+    cmd = Command{.tag = Command::Tag::SET_ARM_ANGLE, .set_arm_angle = Command::SetArmAngle{collectAngleState}};
+    CanSend(cmd);
+  }
+  else if (ps.getButton(myps4::Triangle) > upButtonState || upSendState)
+  {
+    if (!upSendState)
+    {
+      donState = 1;
+      rogerState = 7000;
+      collectAngleState = 1000 * M_PI / 2;
+      upSendState++;
+    }
+    else if (upSendState > 10)
+    {
+      upSendState = 0;
+    }
+    else
+    {
+      upSendState++;
+    }
+    cmd = Command{.tag = Command::Tag::SET_DONFAN_CMD, .set_donfan_cmd = Command::SetDonfanCmd{donState}};
+    CanSend(cmd);
+    cmd = Command{.tag = Command::Tag::SET_EXPANDER_CMD, .set_expander_cmd = Command::SetExpanderCmd{rogerState}};
+    CanSend(cmd);
+    cmd = Command{.tag = Command::Tag::SET_ARM_ANGLE, .set_arm_angle = Command::SetArmAngle{collectAngleState}};
+    CanSend(cmd);
+  }
+  upButtonState = ps.getButton(myps4::Triangle);
+  downButtonState = ps.getButton(myps4::Triangle) & ps.getButton(myps4::R2);
 
   static int16_t collectRogerState = 0;
   if (ps.getButton(myps4::Square) && ps.getButton(myps4::R2))
   {
-    collectRogerState -= 10;
-    cmd = Command{.tag = Command::Tag::SET_ARM_LENGTH, .set_arm_length = Command::SetArmLength{collectRogerState}};
+    if (collectRogerTimer.elapsedClock(50))
+    {
+      collectRogerState -= 10;
+    }
     collectRogerState = std::clamp<int16_t>(collectRogerState, 0, 2000);
+    cmd = Command{.tag = Command::Tag::SET_ARM_LENGTH, .set_arm_length = Command::SetArmLength{collectRogerState}};
+
     CanSend(cmd);
   }
   else if (ps.getButton(myps4::Square))
   {
-    collectRogerState += 10;
-    cmd = Command{.tag = Command::Tag::SET_ARM_LENGTH, .set_arm_length = Command::SetArmLength{collectRogerState}};
+    if (collectRogerTimer.elapsedClock(50))
+    {
+      collectRogerState += 10;
+    }
     collectRogerState = std::clamp<int16_t>(collectRogerState, 0, 2000);
+    cmd = Command{.tag = Command::Tag::SET_ARM_LENGTH, .set_arm_length = Command::SetArmLength{collectRogerState}};
+
     CanSend(cmd);
+  }
+  else
+  {
+    collectRogerTimer.reset();
   }
 
-  static int16_t collectAngleState = 0;
-  if (ps.getButton(myps4::Triangle) && ps.getButton(myps4::R2))
-  {
-    collectAngleState -= 10 * M_PI / 2;
-    cmd = Command{.tag = Command::Tag::SET_ARM_ANGLE, .set_arm_angle = Command::SetArmAngle{collectAngleState}};
-    CanSend(cmd);
-  }
-  else if (ps.getButton(myps4::Triangle))
-  {
-    collectAngleState += 10 * M_PI / 2;
-    cmd = Command{.tag = Command::Tag::SET_ARM_ANGLE, .set_arm_angle = Command::SetArmAngle{collectAngleState}};
-    CanSend(cmd);
-  }
   if (ps.getButton(myps4::Circle) && ps.getButton(myps4::R2))
   {
     collectAngleState = 1000 * M_PI / 4;
