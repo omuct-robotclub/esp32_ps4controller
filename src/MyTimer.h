@@ -32,10 +32,14 @@ namespace mytimer
             {
                 if (std::chrono::duration_cast<std::chrono::milliseconds>(end_ - start_).count() > time)
                 {
+                    Serial.print(std::chrono::duration_cast<std::chrono::milliseconds>(end_ - start_).count());
+                    Serial.println("\tok");
                     checkReset_ = 1;
                     return 1;
                 }
-            }else{
+            }
+            else
+            {
                 if (std::chrono::duration_cast<std::chrono::microseconds>(end_ - start_).count() > time)
                 {
                     checkReset_ = 1;
